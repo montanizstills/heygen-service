@@ -13,11 +13,17 @@ public enum SimpleHttp {
 
     public SimpleHttpResponse sendRequest(String uriInput, String requestBody) {
 
+        String apiKey = new HeygenUtils().getHeygen_api_key();
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("HEYGEN_API_KEY is not set");
+        }
+
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(uriInput))
                 .header("Content-Type", "application/json")
-                .header("x-api-key", new HeygenUtils().getHeygen_api_key());
+                .header("Accept", "application/json")
+                .header("x-api-key", apiKey);
 
         switch (this.name()) {
             case "GET":

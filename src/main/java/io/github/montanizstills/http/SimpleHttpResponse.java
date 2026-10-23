@@ -8,4 +8,8 @@ import lombok.Data;
 public class SimpleHttpResponse {
     private String body;
     private int statusCode;
+
+    public boolean isSuccessful() {
+        return statusCode >= 200 && statusCode < 300;
+    }
 }
