@@ -18,9 +18,10 @@ public enum SimpleHttp {
             throw new IllegalStateException("HEYGEN_API_KEY is not set");
         }
         apiKey = apiKey.strip();
-        // Never echo the key: HttpRequest's own header error includes the value, which ends up in logs and test reports.
-        if (!apiKey.chars().allMatch(c -> c > 0x20 && c < 0x7F)) {
-            throw new IllegalStateException("HEYGEN_API_KEY contains spaces or non-printable characters (e.g. arrow keys pressed while entering it)");
+        // Reject only what HttpRequest would reject (control characters, DEL, chars above 0xFF), so no key format HeyGen
+        // might adopt is blocked here; HeyGen itself decides validity. HttpRequest's own error echoes the key into logs.
+        if (!apiKey.chars().allMatch(c -> c == '\t' || (c >= 0x20 && c != 0x7F && c <= 0xFF))) {
+            throw new IllegalStateException("HEYGEN_API_KEY contains control characters (e.g. arrow keys pressed while entering it)");
         }
 
         HttpClient client = HttpClient.newHttpClient();
