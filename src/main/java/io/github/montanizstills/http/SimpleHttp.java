@@ -17,6 +17,11 @@ public enum SimpleHttp {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalStateException("HEYGEN_API_KEY is not set");
         }
+        apiKey = apiKey.strip();
+        // Never echo the key: HttpRequest's own header error includes the value, which ends up in logs and test reports.
+        if (!apiKey.chars().allMatch(c -> c > 0x20 && c < 0x7F)) {
+            throw new IllegalStateException("HEYGEN_API_KEY contains spaces or non-printable characters (e.g. arrow keys pressed while entering it)");
+        }
 
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
