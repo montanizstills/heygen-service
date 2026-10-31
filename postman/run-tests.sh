@@ -8,6 +8,11 @@ PORT=${PORT:-8080}
 MVN=${MVN:-mvn}
 command -v "$MVN" >/dev/null || MVN=~/.maven/maven-3.9.15/bin/mvn
 
+if [[ -z "${HEYGEN_API_KEY:-}" && -f .env ]]; then
+  HEYGEN_API_KEY=$(sed -nE 's/^[[:space:]]*(export[[:space:]]+)?HEYGEN_API_KEY[[:space:]]*=[[:space:]]*//p' .env | tail -1)
+  HEYGEN_API_KEY=${HEYGEN_API_KEY#[\"\']}; HEYGEN_API_KEY=${HEYGEN_API_KEY%[\"\']}
+  [[ -n "$HEYGEN_API_KEY" ]] && echo "Using HEYGEN_API_KEY from .env"
+fi
 if [[ -z "${HEYGEN_API_KEY:-}" ]]; then
   read -rs "HEYGEN_API_KEY?HeyGen API key (hidden, paste with Cmd+V): "
   echo

@@ -4,9 +4,15 @@ Spring Boot (Java 17) service wrapping the HeyGen API for generating avatar vide
 
 Extracted from [starWithMe](https://github.com/montanizstills/starWithMe) at commit 1818f38 (branch `dev`); history before the split lives there.
 
-Requires `HEYGEN_API_KEY` in the environment.
+Requires a HeyGen API key. Save it once with:
 
-Uses the HeyGen **v3** API (v1/v2 were retired 2026-11-01). Run `mvn test` for offline request-shape tests; tests that call HeyGen run only when `HEYGEN_API_KEY` is set.
+```bash
+scripts/set-heygen-key.sh
+```
+
+It writes `HEYGEN_API_KEY` to `.env` (gitignored, permissions 600), checks it with HeyGen, and clears your clipboard. The service and `postman/run-tests.sh` read `.env` when `HEYGEN_API_KEY` isn't set in the environment.
+
+Uses the HeyGen **v3** API (v1/v2 were retired 2026-11-01). Run `mvn test` for offline request-shape tests; tests that call HeyGen run only when `HEYGEN_API_KEY` is exported (`.env` alone doesn't enable them, so `mvn test` never spends credits by accident).
 
 ## Postman tests
 
