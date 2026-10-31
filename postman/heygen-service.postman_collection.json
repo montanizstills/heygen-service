@@ -1,0 +1,457 @@
+{
+  "info": {
+    "name": "heygen-service",
+    "description": "Tests for heygen-service and the HeyGen v3 calls it makes.\n\nHeyGen v3 validates request bodies before it checks credits, so the create requests pass when HeyGen accepts the body (200/202) or accepts it but refuses for credits (402). A 400 means our request shape is wrong.\n\nSet `heygenApiKey` in the environment (never commit it). The `heygen-service` folder needs the app running at `serviceUrl` with HEYGEN_API_KEY set.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "lookId",
+      "value": ""
+    },
+    {
+      "key": "voiceId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "HeyGen v3",
+      "auth": {
+        "type": "apikey",
+        "apikey": [
+          {
+            "key": "key",
+            "value": "x-api-key",
+            "type": "string"
+          },
+          {
+            "key": "value",
+            "value": "{{heygenApiKey}}",
+            "type": "string"
+          },
+          {
+            "key": "in",
+            "value": "header",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.environment.get('heygenApiKey')) {",
+              "    throw new Error('Set heygenApiKey in the environment');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "Get current user",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{heygenBaseUrl}}/users/me",
+              "host": [
+                "{{heygenBaseUrl}}"
+              ],
+              "path": [
+                "users",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('key is accepted (200)', () => pm.response.to.have.status(200));",
+                  "const user = pm.response.json().data || {};",
+                  "pm.test('response has billing info', () => pm.expect(user).to.have.property('billing_type'));",
+                  "const balance = user.wallet ? user.wallet.remaining_balance : null;",
+                  "if (balance === 0) console.warn('HeyGen wallet balance is 0: create calls will return 402 insufficient_credit');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List avatar looks",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{heygenBaseUrl}}/avatars/looks?limit=5",
+              "host": [
+                "{{heygenBaseUrl}}"
+              ],
+              "path": [
+                "avatars",
+                "looks"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('data is a non-empty array', () => pm.expect(body.data).to.be.an('array').that.is.not.empty);",
+                  "pm.test('pagination fields present', () => pm.expect(body).to.have.property('has_more'));",
+                  "const look = (body.data || []).find(l => l.default_voice_id) || (body.data || [])[0];",
+                  "if (look) {",
+                  "    pm.collectionVariables.set('lookId', look.id);",
+                  "    if (look.default_voice_id) pm.collectionVariables.set('voiceId', look.default_voice_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get avatar look",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{heygenBaseUrl}}/avatars/looks/{{lookId}}",
+              "host": [
+                "{{heygenBaseUrl}}"
+              ],
+              "path": [
+                "avatars",
+                "looks",
+                "{{lookId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('lookId')) {",
+                  "    console.warn('Skipped: no lookId (List avatar looks failed)');",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const look = pm.response.json().data || {};",
+                  "pm.test('returns the requested look', () => pm.expect(look.id).to.eql(pm.collectionVariables.get('lookId')));",
+                  "pm.test('look has an avatar_type', () => pm.expect(['studio_avatar', 'digital_twin', 'photo_avatar']).to.include(look.avatar_type));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List voices",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{heygenBaseUrl}}/voices",
+              "host": [
+                "{{heygenBaseUrl}}"
+              ],
+              "path": [
+                "voices"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const voices = pm.response.json().data || [];",
+                  "pm.test('data is a non-empty array', () => pm.expect(voices).to.be.an('array').that.is.not.empty);",
+                  "if (!pm.collectionVariables.get('voiceId') && voices.length) {",
+                  "    pm.collectionVariables.set('voiceId', voices[0].voice_id || voices[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create avatar video: body accepted",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"avatar\",\n  \"avatar_id\": \"{{lookId}}\",\n  \"engine\": { \"type\": \"avatar_iv\" },\n  \"script\": \"Hello from the heygen-service Postman tests.\",\n  \"voice_id\": \"{{voiceId}}\",\n  \"voice_settings\": { \"speed\": 1.0, \"pitch\": 0 },\n  \"background\": { \"type\": \"color\", \"value\": \"#FFFFFF\" },\n  \"aspect_ratio\": \"16:9\",\n  \"resolution\": \"720p\",\n  \"title\": \"Postman test video\",\n  \"caption\": { \"file_format\": \"srt\" }\n}"
+            },
+            "url": {
+              "raw": "{{heygenBaseUrl}}/videos",
+              "host": [
+                "{{heygenBaseUrl}}"
+              ],
+              "path": [
+                "videos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('lookId')) {",
+                  "    console.warn('Skipped: no lookId (List avatar looks failed)');",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('HeyGen accepts the request body (200/202, or 402 for credits)', () => {",
+                  "    pm.expect(pm.response.code, body.error && body.error.message).to.be.oneOf([200, 202, 402]);",
+                  "});",
+                  "if (pm.response.code === 402) {",
+                  "    console.warn('Body accepted; no video created: ' + body.error.message);",
+                  "} else if (pm.response.code < 300) {",
+                  "    pm.test('returns a video_id', () => pm.expect(body.data.video_id).to.be.a('string').that.is.not.empty);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create prompt avatar: body accepted",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"prompt\",\n  \"name\": \"Postman-Test-Avatar\",\n  \"prompt\": \"A senior Hispanic woman, half body shot, CyberPunk style. Appearance: wool sweater; bright lighting.\",\n  \"aspect_ratio\": \"9:16\"\n}"
+            },
+            "url": {
+              "raw": "{{heygenBaseUrl}}/avatars",
+              "host": [
+                "{{heygenBaseUrl}}"
+              ],
+              "path": [
+                "avatars"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('HeyGen accepts the request body (200/202, or 402 for credits)', () => {",
+                  "    pm.expect(pm.response.code, body.error && body.error.message).to.be.oneOf([200, 202, 402]);",
+                  "});",
+                  "if (pm.response.code === 402) {",
+                  "    console.warn('Body accepted; no avatar created: ' + body.error.message);",
+                  "} else if (pm.response.code < 300) {",
+                  "    pm.test('returns an avatar look id', () => pm.expect(body.data.avatar_item.id).to.be.a('string').that.is.not.empty);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create video without audio: rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"avatar\",\n  \"avatar_id\": \"{{lookId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{heygenBaseUrl}}/videos",
+              "host": [
+                "{{heygenBaseUrl}}"
+              ],
+              "path": [
+                "videos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('lookId')) {",
+                  "    console.warn('Skipped: no lookId (List avatar looks failed)');",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 invalid_parameter', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().error.code).to.eql('invalid_parameter');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request without key: unauthorized",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{heygenBaseUrl}}/users/me",
+              "host": [
+                "{{heygenBaseUrl}}"
+              ],
+              "path": [
+                "users",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 unauthorized', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "    pm.expect(pm.response.json().error.code).to.eql('unauthorized');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "heygen-service",
+      "description": "The service's own endpoints. Start the app with HEYGEN_API_KEY set first (postman/run-tests.sh does this).",
+      "item": [
+        {
+          "name": "Create image (prompt avatar)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{serviceUrl}}/create-image",
+              "host": [
+                "{{serviceUrl}}"
+              ],
+              "path": [
+                "create-image"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const record = pm.response.json();",
+                  "pm.test('saved record has an id', () => pm.expect(record.id).to.be.a('number'));",
+                  "pm.test('avatarId has no JSON quotes', () => pm.expect(String(record.avatarId)).to.not.include('\"'));",
+                  "pm.test('HeyGen accepted the body (avatar created, or refused only for credits)', () => {",
+                  "    if (record.error) pm.expect(record.error).to.match(/^402 insufficient_credit/);",
+                  "    else pm.expect(record.avatarId).to.be.a('string').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete unknown asset: HeyGen error passed through",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{serviceUrl}}/assets/postman-does-not-exist",
+              "host": [
+                "{{serviceUrl}}"
+              ],
+              "path": [
+                "assets",
+                "postman-does-not-exist"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('4xx from HeyGen, not 405 from the route', () => {",
+                  "    pm.expect(pm.response.code).to.be.within(400, 499);",
+                  "    pm.expect(pm.response.code).to.not.eql(405);",
+                  "});",
+                  "pm.test('body is HeyGen\\'s error JSON', () => pm.expect(pm.response.json()).to.have.property('error'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
