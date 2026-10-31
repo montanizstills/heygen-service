@@ -17,26 +17,6 @@
   "item": [
     {
       "name": "HeyGen v3",
-      "auth": {
-        "type": "apikey",
-        "apikey": [
-          {
-            "key": "key",
-            "value": "x-api-key",
-            "type": "string"
-          },
-          {
-            "key": "value",
-            "value": "{{heygenApiKey}}",
-            "type": "string"
-          },
-          {
-            "key": "in",
-            "value": "header",
-            "type": "string"
-          }
-        ]
-      },
       "event": [
         {
           "listen": "prerequest",
@@ -399,6 +379,9 @@
               "path": [
                 "create-image"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -433,6 +416,9 @@
                 "assets",
                 "postman-does-not-exist"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -453,5 +439,25 @@
         }
       ]
     }
-  ]
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "x-api-key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{heygenApiKey}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  }
 }
