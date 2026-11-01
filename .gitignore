@@ -27,6 +27,7 @@ target/
 ### Secrets ###
 **/src/main/resources
 .env
+.env.*
 
 ## Logs
 *.log
