@@ -3,12 +3,12 @@ package io.github.montanizstills.heygenAPI.model.photo;
 import io.github.montanizstills.heygenAPI.json.JsonEnum;
 
 public enum Orientation implements JsonEnum {
-    Square, Horizontal, Vertical;
+    Square("1:1"), Horizontal("16:9"), Vertical("9:16");
 
-    private final String orientation;
+    private final String orientation; // v3 aspect_ratio
 
-    Orientation(){
-        this.orientation = this.name().toLowerCase();
+    Orientation(String aspectRatio){
+        this.orientation = aspectRatio;
     }
     @Override
     public String getValue() {

@@ -3,7 +3,7 @@ package io.github.montanizstills.heygenAPI.model.background;
 import io.github.montanizstills.heygenAPI.json.JsonEnum;
 
 public enum BackgroundType implements JsonEnum {
-    Color, Image, Video;
+    Color, Image; // video backgrounds exist only on studio scenes
     private String backgroundType;
 
     BackgroundType() {

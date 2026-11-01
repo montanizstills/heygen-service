@@ -17,7 +17,8 @@ public class ImageGenerationDTO {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO, generator = "uuid2")
     private Long id;
-    private String generationID;
+    private String avatarId; // look ID; pass as avatar_id to POST /v3/videos
+    private String avatarGroupId;
     private String error;
 
 }

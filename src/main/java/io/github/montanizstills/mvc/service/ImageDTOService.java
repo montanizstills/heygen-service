@@ -9,11 +9,8 @@ import io.github.montanizstills.http.SimpleHttp;
 import io.github.montanizstills.http.SimpleHttpResponse;
 import io.github.montanizstills.mvc.model.ImageGenerationDTO;
 import io.github.montanizstills.mvc.repository.ImageDTORepository;
-import io.github.montanizstills.utils.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.Map;
 
 @Service
 public class ImageDTOService {
@@ -26,7 +23,7 @@ public class ImageDTOService {
 
     public ImageGenerationDTO createImage() {
         SimpleHttpResponse response = SimpleHttp.POST.sendRequest(
-                HeygenEndpoints.CREATE_PHOTO_AVATAR_PHOTOS,
+                HeygenEndpoints.CREATE_AVATAR,
                 PhotoSettings.builder()
                         .name("Simple-Test-Photo_Java_API")
                         .age(Age.Senior)
@@ -39,19 +36,26 @@ public class ImageDTOService {
                         .build()
                         .toJson()
         );
-        System.out.println("\nResponse Body: " + response.getBody()+"\n");
-        JsonNode root = null;
+        System.out.println("\nResponse Body: " + response.getBody() + "\n");
+        JsonNode root;
         try {
             root = new ObjectMapper().readTree(response.getBody());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        System.out.println(root.get("data").get("generation_id"));
 
+        ImageGenerationDTO.ImageGenerationDTOBuilder imageDTO = ImageGenerationDTO.builder();
+        if (response.isSuccessful()) {
+            JsonNode data = root.path("data");
+            imageDTO.avatarId(textOrNull(data.path("avatar_item").path("id")))
+                    .avatarGroupId(textOrNull(data.path("avatar_group").path("id")));
+        } else {
+            imageDTO.error(response.getStatusCode() + " " + root.path("error").path("code").asText() + ": " + root.path("error").path("message").asText());
+        }
+        return this.imageDTORepository.save(imageDTO.build());
+    }
 
-        ImageGenerationDTO imageDTO = ImageGenerationDTO.builder()
-                .generationID(root.get("data").get("generation_id").toString())
-                .build();
-        return this.imageDTORepository.save(imageDTO);
+    private static String textOrNull(JsonNode node) {
+        return node.isMissingNode() || node.isNull() ? null : node.asText();
     }
 }
